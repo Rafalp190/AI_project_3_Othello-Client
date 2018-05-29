@@ -1,5 +1,5 @@
 /*
-  MINIMAX CLIENT
+  MINIMAX CLIENT alpha-beta pruning optimization
   -----------------------------------------------------------------------
   @author: Rafael León
   @institution: UVG
@@ -202,7 +202,7 @@ function mutate_board(data){
  WHITE: Defines player tile color WHITE is second
  EMPTY: Defines code for empty tiles in the board
 */
-var MAX_DEPTH = 4;
+var MAX_DEPTH = 7;
 var BLACK = 1;
 var WHITE = 2;
 var n = 8;
@@ -336,15 +336,14 @@ function getNewBoards(board, currentPlayer, movement){
 
     return boardCopy;
 }
-
 /*
 ------------------------------------------------------------------------------------------------
-      ___      ___                    _   __ ___  _ 
- |\/|  |  |\ |  |  |\/|  /\  \/   |  / \ /__  |  /  
- |  | _|_ | \| _|_ |  | /--\ /\   |_ \_/ \_| _|_ \_ 
+                    _                            _   __ ___  _ 
+  _.  / |_    __   |_) ._    ._  o ._   _    |  / \ /__  |  /  
+ (_| /  |_)        |   | |_| | | | | | (_|   |_ \_/ \_| _|_ \_ 
+                                        _|                     
 ------------------------------------------------------------------------------------------------
 */
-
 /*
   maxValue
   Independent Function to Calculate the maxValue, to be used for when Maximizing the move
@@ -365,13 +364,17 @@ function getNewBoards(board, currentPlayer, movement){
   Dictionary containing maximization value and the corresponding movement
 */
 
-function maxValue(newBoards, evaluatedPlayer, currentPlayer, depth, totalMoves){
+function maxValue(newBoards, evaluatedPlayer, currentPlayer, depth, max, min,totalMoves){
     var v = -Infinity;
 
     for (var i = 0; i< newBoards.length; i++){
         var board = newBoards[i];
 
-        v = Math.max(v, minimax(board.next, evaluatedPlayer, currentPlayer, depth+1,totalMoves).value);
+        v = Math.max(v, minimax(board.next, evaluatedPlayer, currentPlayer, depth+1, max, min,totalMoves).value);
+        max = Math.max(max,v);
+        if(min <= max){
+            return { value: v, movement: board.movement };
+        }
     }
     
     var x = 0;
@@ -383,9 +386,10 @@ function maxValue(newBoards, evaluatedPlayer, currentPlayer, depth, totalMoves){
           x = temp;
       }
     }
-    //console.log(newBoards[index]);
+
     return { value: v, movement: newBoards[index].movement }; 
 }
+
 /*
   minValue
   Independent Function to Calculate the minValue, to be used for when Minimizing the move
@@ -406,12 +410,17 @@ function maxValue(newBoards, evaluatedPlayer, currentPlayer, depth, totalMoves){
   Dictionary containing maximization value and the corresponding movement
 */
 
-function minValue(newBoards, evaluatedPlayer, currentPlayer, depth, totalMoves){
+function minValue(newBoards, evaluatedPlayer, currentPlayer, depth, max, min,totalMoves){
     var v = Infinity;
 
     for (var i = 0; i< newBoards.length; i++){
         var board = newBoards[i];
-        v = Math.min(v, minimax(board.next, evaluatedPlayer, currentPlayer, depth+1,totalMoves).value);
+
+        v = Math.min(v, minimax(board.next, evaluatedPlayer, currentPlayer, depth+1, max, min,totalMoves).value);
+        min = Math.min(min,v);
+        if(min <= max){
+            return { value: v, movement: board.movement };
+        }
     }
     
     var x = 0;
@@ -423,11 +432,11 @@ function minValue(newBoards, evaluatedPlayer, currentPlayer, depth, totalMoves){
           x = temp;
       }
     }
-    //console.log(newBoards[index]);
+
     return { value: v, movement: newBoards[index].movement }; 
 }
 
-function minimax(board, evaluatedPlayer, currentPlayer, depth, totalMoves){
+function minimax(board, evaluatedPlayer, currentPlayer, depth, max,min,totalMoves){
     //console.log("depth: ",MAX_DEPTH);
     if(depth >= MAX_DEPTH || !hasEMPTYSpaces(board)){
         //retorno un diccionario con dos elementos:
@@ -442,7 +451,7 @@ function minimax(board, evaluatedPlayer, currentPlayer, depth, totalMoves){
         return {value: (countPieces(board)[currentPlayer]), movement: undefined};
     }
     //get all posible boards from legal moves
-    for(var i = 0; i < totalMoves.length; i++){
+    for(var i =0; i<totalMoves.length; i++){
         var move = totalMoves[i];
         var next =getNewBoards(board, currentPlayer, move);
         newBoards.push({next: next, movement: move});
@@ -452,9 +461,9 @@ function minimax(board, evaluatedPlayer, currentPlayer, depth, totalMoves){
 
     //maximizar
     if(evaluatedPlayer === currentPlayer)
-        return maxValue(newBoards, evaluatedPlayer, nextPlayer, depth, totalMoves);
+        return maxValue(newBoards, evaluatedPlayer, nextPlayer, depth, max,min,totalMoves);
     else //minimizar
-        return minValue(newBoards, evaluatedPlayer, nextPlayer, depth, totalMoves);
+        return minValue(newBoards, evaluatedPlayer, nextPlayer, depth, max, min,totalMoves);
 }
 
 
@@ -527,7 +536,7 @@ socket.on('ready', function(data){
       }
   }
 
-  var play = minimax(databoard, playerTurnID, playerTurnID, 0,totalMoves);
+  var play = minimax(databoard, playerTurnID, playerTurnID, 0, -Infinity, Infinity,totalMoves);
   console.log("BOARD");  
   console.log(board);   
   console.log("Player Turn: " + playerTurnID);
